@@ -52,6 +52,31 @@ phantomwright_driver install chromium
 
 ---
 
+## Team Bootstrap (Windows, LAN)
+
+For team sharing across multiple PCs, use the root launcher:
+
+```bat
+launch_gml.bat
+```
+
+Or direct role mode:
+
+```bat
+launch_gml.bat central
+launch_gml.bat node
+```
+
+What it does:
+- creates/reuses `.venv`
+- installs Python dependencies from `requirements-central.txt` or `requirements-node.txt`
+- installs JS dependencies for uploader node (`npm install` in `tiktokautouploader/Js_assets`)
+- prompts once for config and saves to `config/central.env` or `config/node.env`
+
+Node PCs must point `SYNC_BASE_URL` to the central server PC (for example `http://192.168.1.100:8100`) and use the same `SYNC_TOKEN`.
+
+---
+
 ## Quick-Start
 
 > It's worth reading `DOCUMENTATION.md` before diving in. The first time you use the function for an account you'll be asked to log in — this only happens once per account.
