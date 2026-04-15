@@ -1,0 +1,2165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GLOBAL MEDIA LIVE : BATCH UPLOAD</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+</head>
+<body>
+    <canvas id="fxBackground" aria-hidden="true"></canvas>
+    <input id="videoFilePicker" type="file" accept=".mp4,.mov,.avi,.mkv,.webm,.m4v,video/*" multiple style="display: none;">
+
+    <div id="userOverlay" class="overlay">
+        <h1>Identify Yourself</h1>
+        <div class="user-grid">
+            <div id="userList" style="display: contents;">
+                <!-- Initial Users -->
+            </div>
+            <div id="addOperatorCard" class="user-card" onclick="addOperator()" style="border-style: dashed; border-color: var(--accent-purple); opacity: 0.8;">
+                <h3>+ Add Operator</h3>
+                <p>Add new workspace</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="topLeftControls" class="top-left-controls">
+        <button id="changeUserBtn" class="btn btn-outline" style="font-size: 0.7rem; padding: 0.4rem 0.8rem;" onclick="showUserSelection()">Switch User</button>
+        <div id="currentUserChip" class="current-user-chip empty">User: Not selected</div>
+    </div>
+
+    <div id="warningOverlay" class="overlay" style="display: none; z-index: 1000;">
+        <div class="card" style="max-width: 400px; text-align: center; padding: 2.5rem; border: 2px solid var(--accent-purple);">
+            <h2 style="color: white; margin-bottom: 1rem;">ARE YOU SURE?</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 2rem; font-size: 0.9rem;">Review your queue and items before launching the batch.</p>
+            <div id="countdown" style="font-size: 5rem; font-weight: 800; color: var(--accent-teal); margin-bottom: 2rem;">6</div>
+            <div style="display: flex; flex-direction: column; gap: 0.8rem; width: 100%;">
+                <button class="btn btn-launch" style="height: 3.5rem; margin-top: 0; background: var(--accent-teal); color: black; width: 100%; cursor: pointer;" onclick="bypassWarning()">RUN IMMEDIATELY</button>
+                <button class="btn btn-outline" style="height: 3.5rem; border: 1px solid rgba(255,255,255,0.2); color: white; width: 100%; cursor: pointer; pointer-events: auto !important;" onclick="cancelWarning()">CANCEL</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="entryOverlay" class="overlay" style="display: none; z-index: 1100;">
+        <div class="entry-modal">
+            <div class="entry-modal-title" id="entryModalTitle">Add Entry</div>
+            <div class="entry-modal-subtitle" id="entryModalSubtitle">Enter a value to continue.</div>
+            <input id="entryModalInput" type="text" placeholder="" autocomplete="off">
+            <div class="entry-modal-actions">
+                <button class="btn btn-outline" style="height: 3rem; color: white; border-color: rgba(255,255,255,0.2);" onclick="closeEntryModal()">Cancel</button>
+                <button class="btn btn-primary" style="height: 3rem;" onclick="submitEntryModal()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="brandBanner" class="brand-banner">
+        <h1 id="brandTitle">GLOBAL MEDIA LIVE : BATCH UPLOAD</h1>
+        <p id="brandSubtitle">Programmed by : GML.Benser</p>
+    </div>
+
+    <div class="dashboard">
+        <!-- Sidebar: Video Queue -->
+        <aside class="panel" id="queuePanel">
+            <div class="panel-header">
+                <h2 id="queuePanelTitle">Video Queue</h2>
+                <div id="queueToolbar" style="display: flex; gap: 0.5rem;">
+                    <button class="btn btn-outline" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" onclick="clearQueue()">Reset</button>
+                    <button class="btn btn-outline" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" onclick="selectAllVideos()">All</button>
+                    <button class="btn btn-outline" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" onclick="clearVideoSelection()">None</button>
+                    <button class="btn btn-primary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" onclick="addVideo()">+ Add</button>
+                </div>
+            </div>
+            <div class="panel-content queue-dropzone" id="videoQueue">
+                <div style="text-align: center; color: var(--text-secondary); margin-top: 2rem; font-size: 0.8125rem;">
+                    Workspace is empty.<br>Click + Add to build your queue.
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Workspace -->
+        <main class="panel workspace-main" style="background: transparent; border: none;">
+            <div class="panel-header" style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 1rem 1rem 0 0;">
+                <h2 id="workspaceTitle">Global Default Settings</h2>
+                <span id="modeBadge" class="badge badge-teal">MODE: GLOBAL</span>
+            </div>
+            <div id="workspaceSettings" class="panel-content settings-scroll" style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-top: none; border-radius: 0 0 1rem 1rem;">
+                
+                <div class="input-group">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem;">
+                        <label style="margin-bottom: 0;">Target Account Portfolio</label>
+                        <div id="accountAdminActions" style="display: flex; gap: 0.4rem;">
+                            <button class="btn btn-outline" style="font-size: 0.65rem; padding: 0.25rem 0.5rem;" onclick="authenticateSelectedAccount()">Authenticate</button>
+                            <button class="btn btn-outline" style="font-size: 0.65rem; padding: 0.25rem 0.5rem; border-color: rgba(239,68,68,0.45); color: #ef4444;" onclick="removeSelectedAccount()">Remove</button>
+                            <button class="btn btn-outline" style="font-size: 0.65rem; padding: 0.25rem 0.5rem;" onclick="addIdentity()">+ Add Identity</button>
+                        </div>
+                    </div>
+                    <div id="accountCards" class="account-grid">
+                        <!-- Dynamic Account Cards -->
+                    </div>
+                    <input type="hidden" id="accountName" value="">
+                </div>
+
+                <div class="input-group">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 0.5rem;">
+                        <label style="margin-bottom: 0;">Caption (Personalized)</label>
+                        <button class="btn btn-primary" id="aiBtn" style="padding: 0.25rem 0.75rem; font-size: 0.65rem; background: var(--accent-purple); color: white;" onclick="generateCaption()">✨ AI GEN</button>
+                    </div>
+                    <textarea id="caption" rows="2" placeholder="Enter caption here..." oninput="saveToCurrent()" style="min-height: 80px;"></textarea>
+                </div>
+
+                <div class="input-group">
+                    <label>Hashtags</label>
+                    <input type="text" id="hashtags" value="#maikalian, #shampooandconditioner, #BuhokGoals, #HairGoals, #maikalianhairmask, #Maikalian, #SalonHairAtHome, #maikalianshampoo, #fyp, #HairTransformation, #fyp" placeholder="#tag, #another" oninput="saveToCurrent()">
+                </div>
+
+                <div class="settings-grid">
+                    <!-- Media Engine -->
+                    <div class="card">
+                        <div class="card-title">Media & Logic Engine</div>
+                        <div class="input-group">
+                            <label>Audio Strategy</label>
+                            <select id="audioStrategy" onchange="toggleAudioFields()">
+                                <option value="favorites">Pick from Favorites</option>
+                                <option value="search">Search TikTok (Custom)</option>
+                                <option value="none">Original Sound Only</option>
+                            </select>
+                        </div>
+                        <div id="customSoundGroup" class="input-group" style="display: none;">
+                            <label>Sound Name/Keywords</label>
+                            <input type="text" id="soundName" placeholder="e.g. 'Viral Pop' or creator name" oninput="saveToCurrent()">
+                        </div>
+                        <div class="input-group">
+                            <label>Audio Volume Mix</label>
+                            <select id="soundVol" onchange="saveToCurrent()">
+                                <option value="mix">Mix (50/50 Split)</option>
+                                <option value="background">Background (Faint Sound)</option>
+                                <option value="main">Main (Strong Sound)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Schedule -->
+                    <div class="card">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem;">
+                            <div class="card-title" style="margin-bottom: 0;">SCHEDULE</div>
+                            <label class="switch-container">
+                                <div class="gui-switch">
+                                    <input type="checkbox" id="scheduleEnabled" onchange="toggleSchedule()">
+                                    <span class="slider"></span>
+                                </div>
+                                <span class="switch-text">Enabled</span>
+                            </label>
+                        </div>
+                        
+                        <div id="scheduleControls" class="schedule-controls" style="display: none;">
+                            <div class="input-group">
+                                <label>Schedule Date & Time</label>
+                                <input type="datetime-local" id="scheduleDateTime" oninput="setScheduleDateTime(this.value)">
+                            </div>
+                            <div id="schedulePreview" class="schedule-preview">Scheduling is off. Video will post immediately.</div>
+                            <div class="schedule-presets">
+                                <button type="button" class="btn btn-outline schedule-chip" onclick="applySchedulePreset(0, 9, 0)">Today 09:00</button>
+                                <button type="button" class="btn btn-outline schedule-chip" onclick="applySchedulePreset(0, 18, 0)">Today 18:00</button>
+                                <button type="button" class="btn btn-outline schedule-chip" onclick="applySchedulePreset(1, 9, 0)">Tomorrow 09:00</button>
+                                <button type="button" class="btn btn-outline schedule-chip" onclick="applySchedulePreset(1, 20, 0)">Tomorrow 20:00</button>
+                            </div>
+                            <input type="time" id="schedule" value="03:10" oninput="syncScheduleFromLegacy()" style="display: none;">
+                            <input type="hidden" id="day" value="22">
+                            <div id="dayGrid" class="day-grid" style="display: none;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 1rem; display: flex; gap: 2rem; align-items: center; padding-bottom: 1rem;">
+                    <label class="switch-container">
+                        <div class="gui-switch">
+                            <input type="checkbox" id="headless" checked>
+                            <span class="slider"></span>
+                        </div>
+                        <span class="switch-text">Headless Toggle (Auto Grid View)</span>
+                    </label>
+                    <label class="switch-container">
+                        <div class="gui-switch">
+                            <input type="checkbox" id="stealth" checked>
+                            <span class="slider"></span>
+                        </div>
+                        <span class="switch-text">Stealth Active</span>
+                    </label>
+                </div>
+            </div>
+
+            <div id="adminDashboard" class="panel-content admin-dashboard" style="display: none; background: var(--bg-secondary); border: 1px solid var(--border-color); border-top: none; border-radius: 0 0 1rem 1rem;">
+                <div class="card" style="margin-bottom: 1rem;">
+                    <div class="card-title">Admin Controls</div>
+                    <div class="input-group" style="margin-bottom: 0.75rem;">
+                        <label>Manage Accounts For</label>
+                        <select id="adminUserSelect" onchange="onAdminUserSelectChange()"></select>
+                    </div>
+                    <div class="admin-action-row">
+                        <button class="btn btn-outline" onclick="adminAddAccount()">+ Add Account</button>
+                        <button class="btn btn-outline" onclick="adminAuthenticateAccount()">Authenticate</button>
+                        <button class="btn btn-outline" style="border-color: rgba(239,68,68,0.45); color: #ef4444;" onclick="adminRemoveAccount()">Remove</button>
+                    </div>
+                    <div id="adminAccountList" class="account-grid" style="margin-top: 0.75rem;"></div>
+                </div>
+
+                <div class="admin-grid">
+                    <div class="card">
+                        <div class="card-title">Session Summary Per User</div>
+                        <div id="adminSummaryPanel" class="admin-list"></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">Recent Errors</div>
+                        <div id="adminErrorsPanel" class="admin-list"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Fixed Action Footer -->
+            <div id="workspaceFooter" class="panel-footer">
+                <button class="btn btn-launch" style="flex: 2; margin-top: 0;" onclick="launchBatchWithWarning()">LAUNCH SELECTED VIDEO</button>
+                <button class="btn btn-stop" style="flex: 1; margin-top: 0;" onclick="stopUploads()">Stop My Uploads</button>
+            </div>
+        </main>
+
+        <!-- Right Side: Status/Logs -->
+        <aside class="panel">
+            <div class="panel-header">
+                <h2 id="liveExecutionTitle">Live Execution</h2>
+            </div>
+            <div class="panel-content live-execution-panel">
+                <div id="liveProgress" class="live-progress-card">
+                    <div class="live-progress-head">
+                        <span>Current Session</span>
+                        <span>0%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 0%;"></div>
+                    </div>
+                    <div class="live-progress-meta">Waiting for launch.</div>
+                </div>
+
+                <div id="logPanel" class="log-panel">
+                    <div class="log-entry">System ready. Awaiting instructions...</div>
+                </div>
+            </div>
+            
+            <div class="panel-header" style="border-top: 1px solid var(--border-color);">
+                <h2>Session History</h2>
+            </div>
+            <div class="panel-content" id="sessionHistory" style="padding: 0.5rem;">
+                <div style="text-align: center; color: var(--text-secondary); font-size: 0.75rem; margin-top: 1rem;">No session history yet.</div>
+            </div>
+        </aside>
+    </div>
+
+    <script>
+        const API_URL = window.location.origin;
+        let videoQueue = [];
+        let accountQueues = {};
+
+        const DEFAULT_ACCOUNTS = {
+            "Admin": [],
+            "Patrick": ["VelmoraSkin", "Novacique", "TrivexaCore"],
+            "Asis": ["Kairothix", "Zyrelune", "OrphicDerma"],
+            "Ace": ["NuvyraCell", "CalystrixLab", "ElyndorGlow", "MyravaLabs"],
+            "Benser": ["jbnsrr.xx"]
+        };
+
+        let ACCOUNTS_DB = { ...DEFAULT_ACCOUNTS };
+        let currentUser = null;
+        let entryModalMode = null;
+        let entryModalTargetUser = "";
+        let adminManagedUser = "";
+        let adminManagedAccount = "";
+        let nodeConfig = {
+            node_id: "node",
+            sync_enabled: false,
+            sync_base_url: "",
+            sync_mode: "local-fallback"
+        };
+
+        function getSelectedAccount() {
+            return (document.getElementById('accountName')?.value || '').trim();
+        }
+
+        function updateCurrentUserChip() {
+            const chip = document.getElementById('currentUserChip');
+            if (!chip) return;
+
+            const selectedAccount = getSelectedAccount();
+            if (!currentUser) {
+                chip.innerText = "User: Not selected";
+                chip.classList.add('empty');
+                return;
+            }
+
+            const roleText = isAdminUser() ? "  |  Role: Admin" : "";
+            chip.innerText = selectedAccount ? `User: ${currentUser}  |  Account: @${selectedAccount}${roleText}` : `User: ${currentUser}${roleText}`;
+            chip.classList.remove('empty');
+        }
+
+        function isAdminUser() {
+            return (currentUser || "").trim().toLowerCase() === "admin";
+        }
+
+        function getOperatorHeaders(base = {}) {
+            return {
+                ...base,
+                "X-Operator": isAdminUser() ? "Admin" : (currentUser || "")
+            };
+        }
+
+        function updateAdminControls() {
+            const admin = isAdminUser();
+            const adminActions = document.getElementById('accountAdminActions');
+            const addOperatorCard = document.getElementById('addOperatorCard');
+            const liveTitle = document.getElementById('liveExecutionTitle');
+
+            if (adminActions) adminActions.style.display = 'none';
+            if (addOperatorCard) addOperatorCard.style.display = admin ? 'block' : 'none';
+            if (liveTitle) liveTitle.innerText = admin ? 'Live Execution (All Users)' : 'Live Execution';
+        }
+
+        function getOperatorList(includeAdmin = false) {
+            return Object.keys(ACCOUNTS_DB)
+                .filter(user => includeAdmin || user.toLowerCase() !== 'admin')
+                .sort((a, b) => a.localeCompare(b));
+        }
+
+        function setAdminManagedUser(user) {
+            const users = getOperatorList(false);
+            if (!users.length) {
+                adminManagedUser = "";
+                adminManagedAccount = "";
+                return;
+            }
+
+            adminManagedUser = users.includes(user) ? user : users[0];
+            const accounts = ACCOUNTS_DB[adminManagedUser] || [];
+            if (!accounts.includes(adminManagedAccount)) {
+                adminManagedAccount = accounts[0] || "";
+            }
+        }
+
+        function renderAdminUserSelect() {
+            const select = document.getElementById('adminUserSelect');
+            if (!select) return;
+
+            const users = getOperatorList(false);
+            setAdminManagedUser(adminManagedUser || users[0] || "");
+
+            select.innerHTML = users.length
+                ? users.map(user => `<option value="${user}" ${user === adminManagedUser ? 'selected' : ''}>${user}</option>`).join('')
+                : `<option value="">No users available</option>`;
+        }
+
+        function renderAdminAccountList() {
+            const container = document.getElementById('adminAccountList');
+            if (!container) return;
+
+            if (!adminManagedUser) {
+                container.innerHTML = '<div style="color: var(--text-secondary); font-size: 0.75rem;">No user selected.</div>';
+                return;
+            }
+
+            const accounts = ACCOUNTS_DB[adminManagedUser] || [];
+            if (!accounts.length) {
+                container.innerHTML = `<div style="color: var(--text-secondary); font-size: 0.75rem;">No accounts under ${adminManagedUser}.</div>`;
+                return;
+            }
+
+            container.innerHTML = accounts.map(account => `
+                <div class="account-pill ${account === adminManagedAccount ? 'active' : ''}" onclick="adminManagedAccount='${account}'; renderAdminAccountList();">
+                    ${account}
+                </div>
+            `).join('');
+        }
+
+        function renderAdminQueuePanel() {
+            const zone = document.getElementById('videoQueue');
+            if (!zone) return;
+
+            const users = getOperatorList(false);
+            if (!users.length) {
+                zone.innerHTML = '<div style="text-align: center; color: var(--text-secondary); margin-top: 2rem; font-size: 0.8125rem;">No users found to monitor.</div>';
+                return;
+            }
+
+            zone.innerHTML = users.map(user => {
+                const count = (ACCOUNTS_DB[user] || []).length;
+                const active = user === adminManagedUser ? 'active' : '';
+                return `
+                    <div class="queue-item ${active}" onclick="setAdminManagedUser('${user}'); renderAdminUserSelect(); renderAdminAccountList(); renderAdminQueuePanel();" style="cursor:pointer;">
+                        <div style="width: 32px; height: 32px; border-radius: 50%; background: ${active ? 'var(--accent-teal)' : '#2a2a2e'}; color: ${active ? '#000' : '#fff'}; display:flex; align-items:center; justify-content:center; font-weight:700;">${user.charAt(0).toUpperCase()}</div>
+                        <div style="flex:1;">
+                            <div style="font-size: 0.82rem; font-weight: 700;">${user}</div>
+                            <div style="font-size: 0.7rem; color: var(--text-secondary);">${count} account(s)</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateAdminModeUi() {
+            const admin = isAdminUser();
+            const workspaceSettings = document.getElementById('workspaceSettings');
+            const adminDashboard = document.getElementById('adminDashboard');
+            const workspaceFooter = document.getElementById('workspaceFooter');
+            const queueToolbar = document.getElementById('queueToolbar');
+            const queueTitle = document.getElementById('queuePanelTitle');
+            const workspaceTitle = document.getElementById('workspaceTitle');
+            const badge = document.getElementById('modeBadge');
+
+            if (workspaceSettings) workspaceSettings.style.display = admin ? 'none' : 'block';
+            if (adminDashboard) adminDashboard.style.display = admin ? 'block' : 'none';
+            if (workspaceFooter) workspaceFooter.style.display = admin ? 'none' : 'flex';
+            if (queueToolbar) queueToolbar.style.display = admin ? 'none' : 'flex';
+            if (queueTitle) queueTitle.innerText = admin ? 'Users Monitor' : 'Video Queue';
+            if (workspaceTitle) workspaceTitle.innerText = admin ? 'Admin Monitoring Console' : 'Global Default Settings';
+
+            if (badge) {
+                if (admin) {
+                    badge.innerText = "MODE: ADMIN";
+                    badge.className = "badge badge-purple";
+                } else {
+                    badge.innerText = activeVideoIndex === null ? "MODE: GLOBAL" : `MODE: VIDEO #${activeVideoIndex + 1}`;
+                    badge.className = activeVideoIndex === null ? "badge badge-teal" : "badge badge-purple";
+                }
+            }
+
+            if (admin) {
+                renderAdminUserSelect();
+                renderAdminAccountList();
+                renderAdminQueuePanel();
+                pollAdminOverview();
+            }
+        }
+
+        function getQueueKey(user = currentUser, account = getSelectedAccount()) {
+            const cleanUser = (user || '').trim();
+            const cleanAccount = (account || '').trim();
+            if (!cleanUser || !cleanAccount) return '';
+            return `${cleanUser}::${cleanAccount}`;
+        }
+
+        function ensureQueueFor(user = currentUser, account = getSelectedAccount()) {
+            const key = getQueueKey(user, account);
+            if (!key) return [];
+            if (!Array.isArray(accountQueues[key])) {
+                accountQueues[key] = [];
+            }
+            return accountQueues[key];
+        }
+
+        function removeQueueFor(user, account) {
+            const key = getQueueKey(user, account);
+            if (key && accountQueues[key]) {
+                delete accountQueues[key];
+            }
+        }
+
+        function switchToSelectedAccountQueue() {
+            videoQueue = ensureQueueFor();
+            if (activeVideoIndex !== null && activeVideoIndex >= videoQueue.length) {
+                activeVideoIndex = null;
+            }
+        }
+
+        async function loadNodeConfig() {
+            try {
+                const res = await fetch(`${API_URL}/node-config`);
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) return;
+                nodeConfig = {
+                    ...nodeConfig,
+                    ...data
+                };
+                if (nodeConfig.sync_enabled) {
+                    addLog(`Node ${nodeConfig.node_id} connected to central monitoring (${nodeConfig.sync_base_url}).`, "info");
+                } else {
+                    addLog(`Node ${nodeConfig.node_id} missing central sync. Upload launch is blocked until SYNC_BASE_URL is configured.`, "error");
+                }
+            } catch (_) {}
+        }
+
+        async function loadAccountsDatabase() {
+            try {
+                const res = await fetch(`${API_URL}/operators`);
+                const data = await res.json();
+                ACCOUNTS_DB = data.operators || { ...DEFAULT_ACCOUNTS };
+            } catch (err) {
+                ACCOUNTS_DB = { ...DEFAULT_ACCOUNTS };
+                addLog("Using local fallback for operators.", "error");
+            }
+            renderOperators();
+            if (currentUser) {
+                renderAccounts();
+            }
+        }
+
+        function resetSessionTracking() {
+            knownLogCount = 0;
+            Object.keys(sessionHistory).forEach(key => delete sessionHistory[key]);
+            renderLiveProgress(null, false);
+            renderHistory();
+        }
+
+        function showUserSelection() {
+            renderOperators();
+            document.getElementById('userOverlay').style.display = 'flex';
+            setTimeout(() => {
+                document.getElementById('userOverlay').style.opacity = '1';
+            }, 10);
+            updateCurrentUserChip();
+            updateAdminControls();
+            updateAdminModeUi();
+        }
+
+        function renderOperators() {
+            const container = document.getElementById('userList');
+            const users = Object.keys(ACCOUNTS_DB).sort((a, b) => {
+                if (a.toLowerCase() === 'admin') return -1;
+                if (b.toLowerCase() === 'admin') return 1;
+                return a.localeCompare(b);
+            });
+            container.innerHTML = users.map(user => `
+                <div class="user-card" onclick="selectUser('${user}')">
+                    <h3>${user}</h3>
+                    <p>${ACCOUNTS_DB[user].length} Accounts Active</p>
+                </div>
+            `).join('');
+            updateAdminControls();
+        }
+
+        function openEntryModal(mode) {
+            entryModalMode = mode;
+
+            const title = document.getElementById('entryModalTitle');
+            const subtitle = document.getElementById('entryModalSubtitle');
+            const input = document.getElementById('entryModalInput');
+            const overlay = document.getElementById('entryOverlay');
+
+            if (mode === 'operator') {
+                title.innerText = 'Add Operator';
+                subtitle.innerText = 'Create a new workspace operator. This will be saved to the backend database.';
+                input.placeholder = 'e.g. Patrick';
+            } else {
+                const target = entryModalTargetUser || currentUser;
+                title.innerText = 'Add Identity';
+                subtitle.innerText = `Add a TikTok account under ${target}. This will be saved to the backend database.`;
+                input.placeholder = 'e.g. @myaccount';
+            }
+
+            input.value = '';
+            overlay.style.display = 'flex';
+            setTimeout(() => input.focus(), 30);
+        }
+
+        function closeEntryModal() {
+            entryModalMode = null;
+            entryModalTargetUser = "";
+            document.getElementById('entryOverlay').style.display = 'none';
+        }
+
+        async function submitEntryModal() {
+            const input = document.getElementById('entryModalInput');
+            const rawValue = input.value.trim();
+
+            if (!rawValue) {
+                addLog("Please enter a value first.", "error");
+                return;
+            }
+
+            if ((entryModalMode === 'operator' || entryModalMode === 'identity') && !isAdminUser()) {
+                addLog("Only Admin can manage operators and accounts.", "error");
+                return;
+            }
+
+            try {
+                if (entryModalMode === 'operator') {
+                    const res = await fetch(`${API_URL}/operators`, {
+                        method: 'POST',
+                        headers: getOperatorHeaders({ 'Content-Type': 'application/json' }),
+                        body: JSON.stringify({ name: rawValue })
+                    });
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.detail || 'Failed to add operator.');
+                    ACCOUNTS_DB = data.operators || ACCOUNTS_DB;
+                    renderOperators();
+                    addLog(`Operator ${rawValue} added to workstation database.`, "success");
+                } else if (entryModalMode === 'identity') {
+                    const targetUser = entryModalTargetUser || currentUser;
+                    const res = await fetch(`${API_URL}/operators/${encodeURIComponent(targetUser)}/accounts`, {
+                        method: 'POST',
+                        headers: getOperatorHeaders({ 'Content-Type': 'application/json' }),
+                        body: JSON.stringify({ name: rawValue })
+                    });
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.detail || 'Failed to add account.');
+                    ACCOUNTS_DB = data.operators || ACCOUNTS_DB;
+                    if (isAdminUser()) {
+                        setAdminManagedUser(targetUser);
+                        adminManagedAccount = rawValue.replace(/^@/, '');
+                        renderAdminUserSelect();
+                        renderAdminAccountList();
+                        renderAdminQueuePanel();
+                    } else {
+                        renderAccounts();
+                        selectAccount(rawValue.replace(/^@/, ''));
+                    }
+                    addLog(`Account ${rawValue} added under ${targetUser}.`, "success");
+                }
+
+                closeEntryModal();
+            } catch (err) {
+                addLog(err.message, "error");
+            }
+        }
+
+        document.getElementById('entryModalInput').addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                submitEntryModal();
+            }
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                closeEntryModal();
+            }
+        });
+
+        function addOperator() {
+            if (!isAdminUser()) {
+                addLog("Only Admin can add operators.", "error");
+                return;
+            }
+            openEntryModal('operator');
+        }
+
+        function selectUser(user) {
+            if (activeVideoIndex !== null) saveToCurrent();
+            currentUser = user;
+            document.getElementById('accountName').value = '';
+            setAdminManagedUser("");
+            updateCurrentUserChip();
+            updateAdminControls();
+            updateAdminModeUi();
+            document.getElementById('userOverlay').style.opacity = '0';
+            setTimeout(() => {
+                document.getElementById('userOverlay').style.display = 'none';
+            }, 500);
+            
+            activeVideoIndex = null;
+            resetSessionTracking();
+            
+            renderAccounts();
+            updateModeBadge();
+            resetForm();
+            updateAdminModeUi();
+            
+            addLog(`Workspace created for ${user}.`, "success");
+        }
+
+        function renderAccounts() {
+            const container = document.getElementById('accountCards');
+            const accounts = ACCOUNTS_DB[currentUser] || [];
+            const currentSelected = document.getElementById('accountName').value;
+            const activeAccount = accounts.includes(currentSelected) ? currentSelected : '';
+             
+            container.innerHTML = accounts.map(acc => `
+                <div class="account-pill ${acc === activeAccount ? 'active' : ''}" onclick="selectAccount('${acc}')">
+                    ${acc}
+                </div>
+            `).join('');
+             
+            // Auto-select first if none selected
+            if (!activeAccount && accounts.length > 0) {
+                selectAccount(accounts[0]);
+                return;
+            }
+
+            if (!activeAccount) {
+                videoQueue = [];
+                activeVideoIndex = null;
+                renderQueue();
+                updateModeBadge();
+                updateCurrentUserChip();
+                updateAdminControls();
+                updateAdminModeUi();
+                return;
+            }
+
+            switchToSelectedAccountQueue();
+            renderQueue();
+            updateCurrentUserChip();
+            updateAdminControls();
+            updateAdminModeUi();
+        }
+
+        function selectAccount(acc) {
+            if (isAdminUser()) {
+                addLog("Admin mode is monitoring-only. Use Admin Controls to manage accounts.", "info");
+                return;
+            }
+            if (activeVideoIndex !== null) saveToCurrent();
+            document.getElementById('accountName').value = acc;
+            renderAccounts();
+            switchToSelectedAccountQueue();
+            activeVideoIndex = null;
+            resetForm();
+            renderQueue();
+            updateModeBadge();
+            updateCurrentUserChip();
+            updateAdminControls();
+            updateAdminModeUi();
+            addLog(`Switched to account: ${acc}. Queue: ${videoQueue.length} video(s).`, "info");
+        }
+
+        function addIdentity() {
+            if (!isAdminUser()) {
+                addLog("Only Admin can add accounts.", "error");
+                return;
+            }
+            const targetUser = isAdminUser() ? adminManagedUser : currentUser;
+            if (!targetUser) {
+                addLog("Select a user first before adding an account.", "error");
+                showUserSelection();
+                return;
+            }
+            entryModalTargetUser = targetUser;
+            openEntryModal('identity');
+        }
+
+        async function removeSelectedAccount() {
+            if (!isAdminUser()) {
+                addLog("Only Admin can remove accounts.", "error");
+                return;
+            }
+            const targetUser = isAdminUser() ? adminManagedUser : currentUser;
+            if (!targetUser) {
+                addLog("Select a user first before removing an account.", "error");
+                return;
+            }
+
+            const selected = isAdminUser() ? (adminManagedAccount || "") : document.getElementById('accountName').value;
+            if (!selected) {
+                addLog("Select an account first.", "error");
+                return;
+            }
+
+            const confirmed = confirm(`Remove account "${selected}" from ${targetUser}?`);
+            if (!confirmed) return;
+
+            try {
+                const res = await fetch(`${API_URL}/operators/${encodeURIComponent(targetUser)}/accounts/${encodeURIComponent(selected)}`, {
+                    method: 'DELETE',
+                    headers: getOperatorHeaders()
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'Failed to remove account.');
+
+                ACCOUNTS_DB = data.operators || ACCOUNTS_DB;
+                removeQueueFor(targetUser, selected);
+                if (!isAdminUser()) {
+                    document.getElementById('accountName').value = '';
+                    renderAccounts();
+                } else {
+                    const accounts = ACCOUNTS_DB[targetUser] || [];
+                    adminManagedAccount = accounts[0] || "";
+                    renderAdminAccountList();
+                    renderAdminQueuePanel();
+                }
+                updateCurrentUserChip();
+                addLog(`Account ${selected} removed from ${targetUser}.`, "success");
+            } catch (err) {
+                addLog(err.message, "error");
+            }
+        }
+
+        async function authenticateSelectedAccount() {
+            if (!isAdminUser()) {
+                addLog("Only Admin can authenticate accounts.", "error");
+                return;
+            }
+            const targetUser = isAdminUser() ? adminManagedUser : currentUser;
+            if (!targetUser) {
+                addLog("Select a user first before authentication.", "error");
+                return;
+            }
+
+            const selected = isAdminUser() ? (adminManagedAccount || "") : document.getElementById('accountName').value;
+            if (!selected) {
+                addLog("Select an account first.", "error");
+                return;
+            }
+
+            addLog(`Authenticating ${selected}...`, "info");
+            try {
+                const res = await fetch(`${API_URL}/operators/${encodeURIComponent(targetUser)}/accounts/${encodeURIComponent(selected)}/authenticate`, {
+                    method: 'POST',
+                    headers: getOperatorHeaders()
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'Authentication failed.');
+
+                const auth = data.auth || {};
+                const cookieState = auth.cookie_exists_after ? "cookie ready" : "cookie missing";
+                addLog(`Authentication complete for ${selected}: ${cookieState}.`, "success");
+            } catch (err) {
+                addLog(err.message, "error");
+            }
+        }
+
+        function onAdminUserSelectChange() {
+            const select = document.getElementById('adminUserSelect');
+            setAdminManagedUser(select?.value || "");
+            renderAdminUserSelect();
+            renderAdminAccountList();
+            renderAdminQueuePanel();
+        }
+
+        function adminAddAccount() {
+            if (!isAdminUser()) {
+                addLog("Admin access required.", "error");
+                return;
+            }
+            if (!adminManagedUser) {
+                addLog("Select a user to manage first.", "error");
+                return;
+            }
+            entryModalTargetUser = adminManagedUser;
+            openEntryModal('identity');
+        }
+
+        async function adminRemoveAccount() {
+            if (!isAdminUser()) {
+                addLog("Admin access required.", "error");
+                return;
+            }
+            if (!adminManagedUser || !adminManagedAccount) {
+                addLog("Select a user and account first.", "error");
+                return;
+            }
+            await removeSelectedAccount();
+        }
+
+        async function adminAuthenticateAccount() {
+            if (!isAdminUser()) {
+                addLog("Admin access required.", "error");
+                return;
+            }
+            if (!adminManagedUser || !adminManagedAccount) {
+                addLog("Select a user and account first.", "error");
+                return;
+            }
+            await authenticateSelectedAccount();
+        }
+
+        function renderAdminOverview(data) {
+            const summaryPanel = document.getElementById('adminSummaryPanel');
+            const errorsPanel = document.getElementById('adminErrorsPanel');
+            if (!summaryPanel || !errorsPanel) return;
+
+            const users = Array.isArray(data?.users) ? data.users : [];
+            if (!users.length) {
+                summaryPanel.innerHTML = '<div class="history-empty">No user sessions yet.</div>';
+            } else {
+                summaryPanel.innerHTML = users.map(user => {
+                    const latest = user.latest_session || {};
+                    const status = user.running ? "RUNNING" : (latest.status || "IDLE");
+                    const percent = user.running ? (latest.percent || 0) : (latest.percent || 0);
+                    const latestAccount = latest.account || latest.accountname || "";
+                    const latestNode = latest.node_id || nodeConfig.node_id || "node";
+                    return `
+                        <div class="history-item" onclick="setAdminManagedUser('${user.operator}'); renderAdminUserSelect(); renderAdminAccountList(); renderAdminQueuePanel();" style="cursor:pointer;">
+                            <div class="history-item-head">
+                                <div class="history-item-name">${user.operator}</div>
+                                <div class="history-item-status" style="color:${status === 'RUNNING' ? '#5ea3ff' : status === 'finished' ? 'var(--accent-teal)' : status === 'failed' ? '#ef4444' : 'var(--text-secondary)'};">${status.toUpperCase()}</div>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: ${Math.max(0, Math.min(100, percent || 0))}%;"></div>
+                            </div>
+                            <div class="history-item-meta">
+                                Accounts: ${user.account_count || 0} | Errors: ${user.error_count || 0}<br>
+                                ${latestAccount ? `Last account: @${latestAccount} | Node: ${latestNode}` : 'No completed session yet'}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            const errors = Array.isArray(data?.recent_errors) ? data.recent_errors : [];
+            if (!errors.length) {
+                errorsPanel.innerHTML = '<div class="history-empty">No recent errors.</div>';
+            } else {
+                errorsPanel.innerHTML = errors.slice(-80).reverse().map(line => `<div class="log-entry error">${line}</div>`).join('');
+            }
+        }
+
+        async function pollAdminOverview() {
+            if (!isAdminUser()) return;
+
+            try {
+                const res = await fetch(`${API_URL}/admin/overview`, {
+                    headers: getOperatorHeaders()
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) return;
+                renderAdminOverview(data);
+            } catch (_) {}
+        }
+
+        function saveState() {
+            // Persistence disabled by user request
+        }
+
+        function renderQueue() {
+            const container = document.getElementById('videoQueue');
+            if (isAdminUser()) {
+                renderAdminQueuePanel();
+                updateLaunchButton();
+                return;
+            }
+            const selectedAccount = getSelectedAccount();
+            if (!selectedAccount) {
+                container.innerHTML = '<div style="text-align: center; color: var(--text-secondary); margin-top: 2rem; font-size: 0.8125rem;">Select an account first.</div>';
+                updateLaunchButton();
+                return;
+            }
+            if (videoQueue.length === 0) {
+                container.innerHTML = `<div style="text-align: center; color: var(--text-secondary); margin-top: 2rem; font-size: 0.8125rem;">No videos queued for @${selectedAccount}.<br>Click + Add to build this account queue.</div>`;
+                updateLaunchButton();
+                return;
+            }
+            container.innerHTML = videoQueue.map((item, i) => {
+                const statusClass = item.captionStatus === 'ready' ? 'status-ready' : 'status-loading';
+                const isSelected = item.selected !== false;
+                const statusText = item.captionStatus === 'ready' ? '✅ CAPTION READY' : '⏳ GENERATING...';
+                
+                return `
+                <div class="queue-item ${activeVideoIndex === i ? 'active' : ''}" onclick="selectVideo(${i})" style="cursor: pointer; position: relative;">
+                    <button onclick="event.stopPropagation(); removeVideo(${i})" class="btn-delete-small">×</button>
+                    <input type="checkbox" ${isSelected ? 'checked' : ''} onclick="event.stopPropagation();" onchange="toggleVideoSelection(${i}, this.checked)" style="width: 16px; height: 16px; cursor: pointer; accent-color: var(--accent-teal);">
+                    <div style="width: 32px; height: 32px; background: ${activeVideoIndex === i ? 'var(--accent-teal)' : '#2a2a2e'}; color: ${activeVideoIndex === i ? '#000' : 'white'}; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; flex-shrink: 0;">${i + 1}</div>
+                    <div style="flex: 1; min-width: 0; padding-left: 0.5rem;">
+                        <div style="font-size: 0.8125rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.desc || item.video.split('\\').pop().split('/').pop()}</div>
+                        <div class="status-badge ${statusClass}">${statusText}</div>
+                    </div>
+                </div>
+            `}).join('');
+            updateLaunchButton();
+            saveState();
+        }
+
+        function removeVideo(index) {
+            videoQueue.splice(index, 1);
+            if (activeVideoIndex === index) {
+                activeVideoIndex = null;
+                resetForm();
+            } else if (activeVideoIndex > index) {
+                activeVideoIndex--;
+            }
+            renderQueue();
+            updateModeBadge();
+            addLog("Video removed from queue.", "info");
+        }
+
+        function clearQueue() {
+            if (isAdminUser()) {
+                addLog("Admin mode is monitoring-only and has no upload queue.", "info");
+                return;
+            }
+            const selectedAccount = getSelectedAccount();
+            if (!selectedAccount) {
+                addLog("Select an account first.", "error");
+                return;
+            }
+            const queue = ensureQueueFor();
+            queue.length = 0;
+            videoQueue = queue;
+            activeVideoIndex = null;
+            resetForm();
+            renderQueue();
+            updateModeBadge();
+            addLog(`Queue cleared for @${selectedAccount}.`, "info");
+        }
+
+        function toggleVideoSelection(index, selected) {
+            if (!videoQueue[index]) return;
+            videoQueue[index].selected = !!selected;
+            updateLaunchButton();
+            saveState();
+        }
+
+        function selectAllVideos() {
+            if (isAdminUser()) {
+                addLog("Admin mode is monitoring-only and has no upload queue.", "info");
+                return;
+            }
+            if (videoQueue.length === 0) {
+                addLog("No videos to select.", "info");
+                return;
+            }
+            videoQueue.forEach(v => v.selected = true);
+            renderQueue();
+            addLog("All videos selected for launch.", "success");
+        }
+
+        function clearVideoSelection() {
+            if (isAdminUser()) {
+                addLog("Admin mode is monitoring-only and has no upload queue.", "info");
+                return;
+            }
+            if (videoQueue.length === 0) {
+                addLog("No videos to update.", "info");
+                return;
+            }
+            videoQueue.forEach(v => v.selected = false);
+            renderQueue();
+            addLog("Video selection cleared.", "info");
+        }
+
+        function updateLaunchButton() {
+            const btn = document.querySelector('.panel-footer .btn-launch');
+            if (!btn) return;
+
+            btn.innerText = "LAUNCH SELECTED VIDEO";
+             
+            const selectedVideos = videoQueue.filter(v => v.selected !== false);
+            const hasAccount = !!getSelectedAccount();
+            const canLaunch = !isAdminUser() && hasAccount && selectedVideos.length > 0;
+            
+            btn.disabled = !canLaunch;
+            btn.style.opacity = canLaunch ? "1" : "0.72";
+            btn.style.cursor = canLaunch ? "pointer" : "not-allowed";
+            btn.style.filter = canLaunch ? "none" : "saturate(0.65)";
+            if (isAdminUser()) {
+                btn.title = "Admin account is monitoring-only";
+            } else {
+                btn.title = !hasAccount ? "Select an account first" : selectedVideos.length === 0 ? "Select at least one video first" : "";
+            }
+        }
+
+        let activeVideoIndex = null;
+
+        function selectVideo(index) {
+            if (isAdminUser()) {
+                addLog("Admin mode is monitoring-only and has no upload queue.", "info");
+                return;
+            }
+            // Save current form state to previous active video if any
+            if (activeVideoIndex !== null) saveToCurrent();
+
+            if (activeVideoIndex === index) {
+                // Toggle off to Global
+                activeVideoIndex = null;
+                addLog("Switched to Global Mode.", "info");
+                resetForm();
+            } else {
+                activeVideoIndex = index;
+                loadToForm(index);
+                addLog(`Editing Video #${index + 1} individual settings.`, "success");
+            }
+            renderQueue();
+            updateModeBadge();
+        }
+
+        function updateModeBadge() {
+            const badge = document.getElementById('modeBadge');
+            const title = document.getElementById('workspaceTitle');
+
+            if (isAdminUser()) {
+                if (badge) {
+                    badge.innerText = "MODE: ADMIN";
+                    badge.className = "badge badge-purple";
+                }
+                if (title) title.innerText = "Admin Monitoring Console";
+                return;
+            }
+            
+            if (activeVideoIndex === null) {
+                if (badge) {
+                    badge.innerText = "MODE: GLOBAL";
+                    badge.className = "badge badge-teal";
+                }
+                if (title) title.innerText = "Global Default Settings";
+            } else {
+                if (badge) {
+                    badge.innerText = `MODE: VIDEO #${activeVideoIndex + 1}`;
+                    badge.className = "badge badge-purple";
+                }
+                if (title) title.innerText = `Settings for Video #${activeVideoIndex + 1}`;
+            }
+        }
+
+        function loadToForm(index) {
+            const item = videoQueue[index];
+            const config = item.config;
+            const captionBox = document.getElementById('caption');
+            const isGenerating = item.captionStatus === 'loading';
+            
+            captionBox.value = config.desc || "";
+            captionBox.disabled = isGenerating;
+            captionBox.placeholder = isGenerating ? "⌛ AI is writing your viral caption... please wait." : "Enter caption here...";
+            captionBox.style.opacity = isGenerating ? "0.6" : "1";
+            
+            document.getElementById('hashtags').value = (config.hashtags || []).join(', ');
+            document.getElementById('schedule').value = config.schedule || "03:10";
+            document.getElementById('day').value = String(config.day || 22);
+
+            const isSched = config.scheduleEnabled !== false;
+            document.getElementById('scheduleEnabled').checked = isSched;
+            document.getElementById('scheduleControls').style.display = isSched ? 'block' : 'none';
+            syncScheduleUiFromFields();
+            updateSchedulePreview();
+
+            // Map backend values back to Strategy UI
+            const sound = config.sound_name || "random";
+            const strategy = document.getElementById('audioStrategy');
+            const soundInput = document.getElementById('customSoundGroup');
+            
+            if (sound === "none") {
+                strategy.value = "none";
+                soundInput.style.display = "none";
+            } else if (sound === "random") {
+                strategy.value = "favorites";
+                soundInput.style.display = "none";
+            } else {
+                strategy.value = "search";
+                soundInput.style.display = "block";
+                document.getElementById('soundName').value = sound;
+            }
+
+            document.getElementById('soundVol').value = config.sound_aud_vol || "mix";
+        }
+
+        function toggleSchedule() {
+            const isEnabled = document.getElementById('scheduleEnabled').checked;
+            document.getElementById('scheduleControls').style.display = isEnabled ? 'block' : 'none';
+            if (isEnabled) syncScheduleUiFromFields();
+            updateSchedulePreview();
+            saveToCurrent();
+        }
+
+        function toggleAudioFields() {
+            const strategy = document.getElementById('audioStrategy').value;
+            const customGroup = document.getElementById('customSoundGroup');
+            customGroup.style.display = (strategy === 'search') ? 'block' : 'none';
+            saveToCurrent();
+        }
+
+        function renderDayGrid() {
+            const container = document.getElementById('dayGrid');
+            if (!container || container.style.display === 'none') return;
+            const currentDay = parseInt(document.getElementById('day').value);
+            container.innerHTML = '';
+            for (let i = 1; i <= 31; i++) {
+                const cell = document.createElement('div');
+                cell.className = `day-cell ${i === currentDay ? 'active' : ''}`;
+                cell.innerText = i;
+                cell.onclick = () => setDay(i);
+                container.appendChild(cell);
+            }
+        }
+
+        function setDay(num) {
+            document.getElementById('day').value = num;
+            renderDayGrid();
+            syncScheduleUiFromFields();
+            updateSchedulePreview();
+            saveToCurrent();
+        }
+
+        function pad2(value) {
+            return String(value).padStart(2, '0');
+        }
+
+        function toDateTimeLocalValue(date) {
+            if (!(date instanceof Date) || Number.isNaN(date.getTime())) return "";
+            return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}T${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
+        }
+
+        function buildScheduleDate(day, timeText) {
+            const now = new Date();
+            const safeDay = Math.max(1, Math.min(31, parseInt(day, 10) || now.getDate()));
+            const [hoursText, minutesText] = (timeText || "03:10").split(':');
+            const hours = Math.max(0, Math.min(23, parseInt(hoursText, 10) || 3));
+            const minutes = Math.max(0, Math.min(59, parseInt(minutesText, 10) || 10));
+
+            let candidate = new Date(now.getFullYear(), now.getMonth(), safeDay, hours, minutes, 0, 0);
+            if (candidate < now) {
+                candidate = new Date(now.getFullYear(), now.getMonth() + 1, safeDay, hours, minutes, 0, 0);
+            }
+
+            if (candidate.getDate() !== safeDay) {
+                candidate = new Date(candidate.getFullYear(), candidate.getMonth() + 1, 0, hours, minutes, 0, 0);
+            }
+
+            return candidate;
+        }
+
+        function syncScheduleUiFromFields() {
+            const dateInput = document.getElementById('scheduleDateTime');
+            if (!dateInput) return;
+
+            const dayValue = document.getElementById('day').value;
+            const timeValue = document.getElementById('schedule').value;
+            const scheduleDate = buildScheduleDate(dayValue, timeValue);
+            dateInput.value = toDateTimeLocalValue(scheduleDate);
+        }
+
+        function syncScheduleFromLegacy() {
+            syncScheduleUiFromFields();
+            updateSchedulePreview();
+            saveToCurrent();
+        }
+
+        function setScheduleDateTime(value) {
+            if (!value) {
+                updateSchedulePreview();
+                return;
+            }
+
+            const parsed = new Date(value);
+            if (Number.isNaN(parsed.getTime())) {
+                updateSchedulePreview();
+                return;
+            }
+
+            document.getElementById('schedule').value = `${pad2(parsed.getHours())}:${pad2(parsed.getMinutes())}`;
+            document.getElementById('day').value = String(parsed.getDate());
+            updateSchedulePreview(parsed);
+            saveToCurrent();
+        }
+
+        function updateSchedulePreview(dateObj = null) {
+            const preview = document.getElementById('schedulePreview');
+            if (!preview) return;
+
+            const isEnabled = document.getElementById('scheduleEnabled').checked;
+            if (!isEnabled) {
+                preview.innerText = "Scheduling is off. Video will post immediately.";
+                return;
+            }
+
+            let scheduleDate = dateObj;
+            if (!(scheduleDate instanceof Date) || Number.isNaN(scheduleDate.getTime())) {
+                const raw = document.getElementById('scheduleDateTime').value;
+                scheduleDate = raw ? new Date(raw) : null;
+            }
+
+            if (!scheduleDate || Number.isNaN(scheduleDate.getTime())) {
+                preview.innerText = "Select date and time for this upload.";
+                return;
+            }
+
+            const prettyDate = scheduleDate.toLocaleDateString([], { month: 'short', day: 'numeric', weekday: 'short' });
+            const prettyTime = scheduleDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            preview.innerText = `Scheduled for ${prettyDate} at ${prettyTime}`;
+        }
+
+        function applySchedulePreset(dayOffset, hour, minute) {
+            const dateInput = document.getElementById('scheduleDateTime');
+            if (!dateInput) return;
+
+            const preset = new Date();
+            preset.setSeconds(0, 0);
+            preset.setDate(preset.getDate() + (parseInt(dayOffset, 10) || 0));
+            preset.setHours(parseInt(hour, 10) || 0, parseInt(minute, 10) || 0, 0, 0);
+            dateInput.value = toDateTimeLocalValue(preset);
+            setScheduleDateTime(dateInput.value);
+        }
+
+        function saveToCurrent() {
+            if (activeVideoIndex === null) return;
+            
+            const strategy = document.getElementById('audioStrategy').value;
+            let sound = "random";
+            if (strategy === "none") sound = "none";
+            if (strategy === "search") sound = document.getElementById('soundName').value || "Viral Sound";
+
+            const config = {
+                desc: document.getElementById('caption').value,
+                hashtags: document.getElementById('hashtags').value.split(',').map(t => t.trim()).filter(t => t),
+                scheduleEnabled: document.getElementById('scheduleEnabled').checked,
+                schedule: document.getElementById('schedule').value,
+                day: parseInt(document.getElementById('day').value) || null,
+                sound_name: sound,
+                sound_aud_vol: document.getElementById('soundVol').value
+            };
+            
+            videoQueue[activeVideoIndex].config = { ...videoQueue[activeVideoIndex].config, ...config };
+            
+            // If user typed a caption manually, mark as ready
+            if (config.desc && config.desc.trim().length > 0) {
+                videoQueue[activeVideoIndex].captionStatus = 'ready';
+            }
+            
+            updateLaunchButton();
+            renderQueue();
+        }
+
+        function resetForm() {
+            document.getElementById('caption').value = "";
+            document.getElementById('hashtags').value = getDefaultHashtagsTextForCurrentUser();
+            
+            const schedToggle = document.getElementById('scheduleEnabled');
+            schedToggle.checked = false;
+            document.getElementById('scheduleControls').style.display = "none";
+            
+            document.getElementById('schedule').value = "03:10";
+            document.getElementById('day').value = "22";
+            syncScheduleUiFromFields();
+            updateSchedulePreview();
+            document.getElementById('audioStrategy').value = "favorites";
+            document.getElementById('customSoundGroup').style.display = "none";
+            document.getElementById('soundName').value = "";
+            document.getElementById('soundVol').value = "mix";
+            renderDayGrid();
+        }
+
+        async function openFile(path) {
+            try {
+                await fetch(`${API_URL}/open-file?path=${encodeURIComponent(path)}`);
+            } catch (err) {
+                addLog("Failed to open file.", "error");
+            }
+        }
+
+        const DYNAMIC_HASHTAGS = ["#maikalian", "#shampooandconditioner", "#BuhokGoals", "#HairGoals", "#maikalianhairmask", "#Maikalian", "#SalonHairAtHome", "#maikalianshampoo", "#fyp", "#HairTransformation", "#fypシ"];
+
+        const DYNAMIC_HASHTAGS_LEGACY = ["#maikalian", "#shampooandconditioner", "#BuhokGoals", "#HairGoals", "#maikalianhairmask", "#Maikalian", "#SalonHairAtHome", "#maikalianshampoo", "#fyp", "#HairTransformation", "#fypã‚·"];
+
+        const HIKARI_HASHTAGS = [
+            "#SunscreenPH", "#SPF50", "#DailySunscreen", "#GlowSkinPH", "#SkinCareRoutinePH",
+            "#SunProtection", "#GlassSkinPH", "#LightweightSunscreen", "#NoWhiteCast",
+            "#FreshSkinEveryday", "#SkincarePH", "#BeautyPH", "#SummerSkinPH", "#UVProtection",
+            "#RadiantSkinPH", "#SunscreenEssentials", "#ProtectYourSkin", "#SkinGoalsPH",
+            "#HealthySkinPH", "#SkincareAddictPH", "#GlowUpPH", "#BeautyRoutinePH",
+            "#HydratedSkin", "#NonStickySunscreen", "#EverydayGlow"
+        ];
+
+        const MAIKALIAN_HASHTAGS = [
+            "#maikalian", "#shampooandconditioner", "#BuhokGoals", "#HairGoals",
+            "#maikalianhairmask", "#Maikalian", "#SalonHairAtHome", "#maikalianshampoo",
+            "#fyp", "#HairTransformation", "#fyp"
+        ];
+
+        const HIKARI_CAPTIONS = [
+            "Grabe, ang gaan sa skin pero todo protect! ☀️✨ Hindi sticky, hindi heavy - perfect pang everyday kahit super init sa labas 🥵💛\nWith SPF50 PA++++, safe ka sa UV habang fresh and glowing pa rin ang peg 😍💦\nKung ayaw mo ng malagkit na sunscreen, ito na 'yun sis - lightweight pero powerful! 💯🔥",
+            "Init na init na ba outside? ☀️🥵 Don't forget your daily protection!\nThis sunscreen = lightweight, fresh, at hindi malagkit 💛✨\nPerfect for everyday glow kahit pawisin girl ka pa 😍",
+            "POV: Nakahanap ka ng sunscreen na hindi mo ramdam pero protected ka all day 😌☀️\nNo white cast, no heavy feeling - just fresh glowing skin 💦✨",
+            "Hindi kumpleto ang skincare kung walang sunscreen! 🚫☀️\nGood thing this one is super gaan + mabilis ma-absorb 💛✨\nPerfect pang everyday kahit nasa bahay lang 🏡",
+            "Main character energy pero protected 😎☀️\nFresh look all day without the lagkit feeling 💦✨\nIto na ang sign mo mag sunscreen daily! 💛",
+            "Kung gusto mo ng glowing skin pero ayaw mo ng heavy products... THIS IS IT 💛✨\nSuper lightweight + fresh finish - perfect pang all day wear 😍☀️"
+        ];
+
+        function isHikariUser() {
+            return (currentUser || "").trim().toUpperCase() === "HIKARI";
+        }
+
+        function getDefaultHashtagsForCurrentUser() {
+            return isHikariUser() ? [...HIKARI_HASHTAGS] : [...MAIKALIAN_HASHTAGS];
+        }
+
+        function getDefaultHashtagsTextForCurrentUser() {
+            return getDefaultHashtagsForCurrentUser().join(", ");
+        }
+
+        function getCustomCaptionForCurrentUser() {
+            if (isHikariUser()) {
+                const index = Math.floor(Math.random() * HIKARI_CAPTIONS.length);
+                return HIKARI_CAPTIONS[index];
+            }
+            return null;
+        }
+
+        function isVideoFile(pathOrName = "") {
+            return /\.(mp4|mov|avi|mkv|webm|m4v)$/i.test(pathOrName);
+        }
+
+        function fileUrlToPath(raw = "") {
+            const value = (raw || "").trim();
+            if (!value.toLowerCase().startsWith("file://")) {
+                return value;
+            }
+
+            try {
+                let decoded = decodeURIComponent(value);
+                decoded = decoded.replace(/^file:\/\//i, "");
+
+                if (/^\/[a-zA-Z]:\//.test(decoded)) {
+                    decoded = decoded.slice(1);
+                }
+
+                return decoded.replace(/\//g, "\\");
+            } catch (_) {
+                return value;
+            }
+        }
+
+        function isAbsolutePath(path = "") {
+            if (!path) return false;
+            return /^[a-zA-Z]:[\\/]/.test(path) || /^\\\\/.test(path) || path.startsWith("/");
+        }
+
+        function normalizeVideoPath(path = "") {
+            const cleaned = fileUrlToPath((path || "").trim().replace(/^["']|["']$/g, ""));
+            return cleaned.trim();
+        }
+
+        function createQueueItemFromPath(path) {
+            const filename = path.split('\\').pop().split('/').pop();
+            return {
+                video: path,
+                desc: filename,
+                captionStatus: 'loading',
+                selected: true,
+                config: {
+                    desc: "",
+                    hashtags: getDefaultHashtagsForCurrentUser(),
+                    scheduleEnabled: false,
+                    schedule: "03:10",
+                    day: 22,
+                    sound_name: "random",
+                    sound_aud_vol: "mix"
+                }
+            };
+        }
+
+        function addVideosFromPaths(paths = [], sourceLabel = "Added") {
+            const selectedAccount = getSelectedAccount();
+            if (!selectedAccount) {
+                addLog("Select an account first before adding videos.", "error");
+                return;
+            }
+
+            videoQueue = ensureQueueFor();
+
+            const normalized = paths
+                .map(p => normalizeVideoPath(p))
+                .filter(p => p && isVideoFile(p) && isAbsolutePath(p));
+
+            const skippedCount = paths.length - normalized.length;
+            if (skippedCount > 0) {
+                addLog(`Skipped ${skippedCount} file(s) without full path. Use + Add picker if needed.`, "info");
+            }
+
+            if (normalized.length === 0) {
+                addLog("No valid video files detected with absolute paths.", "error");
+                return;
+            }
+
+            const existing = new Set(videoQueue.map(v => (v.video || "").toLowerCase()));
+            const toAdd = normalized.filter(p => !existing.has(p.toLowerCase()));
+            const duplicateCount = normalized.length - toAdd.length;
+
+            if (toAdd.length === 0) {
+                addLog("All dropped videos are already in queue.", "info");
+                return;
+            }
+
+            const wasEmpty = videoQueue.length === 0;
+            const newIndices = [];
+
+            toAdd.forEach(path => {
+                const idx = videoQueue.length;
+                videoQueue.push(createQueueItemFromPath(path));
+                newIndices.push(idx);
+                addToHistory(path, 'QUEUED');
+            });
+
+            renderQueue();
+            if (wasEmpty && videoQueue.length > 0) {
+                selectVideo(0);
+            }
+
+            addLog(`${sourceLabel}: ${toAdd.length} video(s) queued.${duplicateCount ? ` Skipped ${duplicateCount} duplicate(s).` : ""}`, "success");
+            newIndices.forEach(idx => autoGenerateCaption(idx));
+        }
+
+        async function resolveDroppedFiles(files = []) {
+            if (!files.length) return [];
+
+            const formData = new FormData();
+            files.forEach((file, index) => {
+                if (file) {
+                    formData.append('files', file, file.name || `dropped_${index}.mp4`);
+                }
+            });
+
+            const res = await fetch(`${API_URL}/resolve-dropped-videos`, {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                throw new Error(data?.detail || data?.error || `Upload failed (${res.status})`);
+            }
+
+            return Array.isArray(data.paths) ? data.paths : [];
+        }
+
+        function initGlobalDropGuard() {
+            const preventBrowserOpen = (event) => {
+                const transfer = event.dataTransfer;
+                if (!transfer) return;
+                const types = Array.from(transfer.types || []);
+                if (types.includes('Files')) {
+                    event.preventDefault();
+                }
+            };
+
+            window.addEventListener('dragover', preventBrowserOpen);
+            window.addEventListener('drop', preventBrowserOpen);
+        }
+
+        function initQueueDragAndDrop() {
+            const zone = document.getElementById('videoQueue');
+            if (!zone) return;
+
+            const queuePanel = zone.closest('.panel');
+            const targets = [zone, queuePanel].filter(Boolean);
+
+            const stop = (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+            };
+
+            function extractDropPayload(event) {
+                const transfer = event.dataTransfer;
+                if (!transfer) return { paths: [], files: [] };
+
+                const files = Array.from(transfer.files || []);
+                const itemFiles = Array.from(transfer.items || [])
+                    .filter(item => item.kind === 'file')
+                    .map(item => item.getAsFile())
+                    .filter(Boolean);
+                const mergedFiles = [...files, ...itemFiles].filter(Boolean);
+
+                const uriPayload = [
+                    transfer.getData('text/uri-list') || "",
+                    transfer.getData('text/plain') || ""
+                ]
+                    .join('\n')
+                    .split(/\r?\n/)
+                    .map(line => line.trim())
+                    .filter(line => line && !line.startsWith('#'));
+
+                const uriPaths = uriPayload
+                    .map(line => line.toLowerCase().startsWith('file://') ? fileUrlToPath(line) : line)
+                    .filter(Boolean);
+
+                const rawPaths = [
+                    ...files.map(file => file.path || file.name || ""),
+                    ...itemFiles.map(file => file.path || file.name || ""),
+                    ...uriPaths
+                ].filter(Boolean);
+
+                return {
+                    paths: [...new Set(rawPaths)],
+                    files: mergedFiles
+                };
+            }
+
+            targets.forEach(target => {
+                ['dragenter', 'dragover'].forEach(type => {
+                    target.addEventListener(type, (event) => {
+                        stop(event);
+                        zone.classList.add('drag-over');
+                    });
+                });
+
+                ['dragleave', 'dragend', 'drop'].forEach(type => {
+                    target.addEventListener(type, (event) => {
+                        stop(event);
+                        if (type !== 'drop') zone.classList.remove('drag-over');
+                    });
+                });
+            });
+
+            zone.addEventListener('drop', async (event) => {
+                zone.classList.remove('drag-over');
+                if (isAdminUser()) {
+                    addLog("Admin mode is monitoring-only and does not accept video uploads.", "info");
+                    return;
+                }
+                const payload = extractDropPayload(event);
+                const absolutePaths = payload.paths
+                    .map(path => normalizeVideoPath(path))
+                    .filter(path => path && isAbsolutePath(path) && isVideoFile(path));
+
+                if (absolutePaths.length > 0) {
+                    addVideosFromPaths(absolutePaths, "Drag & drop");
+                    return;
+                }
+
+                if (payload.files.length > 0) {
+                    addLog(`Importing ${payload.files.length} dropped video(s) from this PC...`, "info");
+                    try {
+                        const uploadedPaths = await resolveDroppedFiles(payload.files);
+                        if (uploadedPaths.length > 0) {
+                            addVideosFromPaths(uploadedPaths, "Drag & drop");
+                            return;
+                        }
+                        addLog("Dropped files could not be imported.", "error");
+                    } catch (error) {
+                        addLog(`Drag/drop import failed: ${error.message}`, "error");
+                    }
+                    return;
+                }
+
+                addLog("Drop detected, but no valid files were found.", "error");
+            });
+        }
+
+        async function addVideo() {
+            if (isAdminUser()) {
+                addLog("Admin mode is monitoring-only and cannot import videos.", "info");
+                return;
+            }
+            const picker = document.getElementById('videoFilePicker');
+            if (!picker) {
+                addLog("Video picker is unavailable in this build.", "error");
+                return;
+            }
+
+            picker.value = '';
+            picker.click();
+        }
+
+        async function autoGenerateCaption(index) {
+            try {
+                const customCaption = getCustomCaptionForCurrentUser();
+                if (customCaption) {
+                    videoQueue[index].config.desc = customCaption;
+                    videoQueue[index].captionStatus = 'ready';
+                    if (activeVideoIndex === index) loadToForm(index);
+                    renderQueue();
+                    return;
+                }
+
+                const res = await fetch(`${API_URL}/generate-caption`);
+                const data = await res.json();
+                
+                const caption = data.caption || "Sparkle and shine with Maikalian! ✨";
+                videoQueue[index].config.desc = caption;
+                videoQueue[index].captionStatus = 'ready';
+                if (activeVideoIndex === index) loadToForm(index);
+            } catch (err) {
+                videoQueue[index].captionStatus = 'error';
+            }
+            renderQueue();
+        }
+
+        let warningTimer = null;
+        function launchBatchWithWarning() {
+            if (isAdminUser()) {
+                addLog("Admin account is monitoring-only and cannot launch uploads.", "error");
+                return;
+            }
+            if (videoQueue.length === 0) {
+                addLog("Queue is empty!", "error");
+                return;
+            }
+
+            const selectedVideos = videoQueue.filter(v => v.selected !== false);
+            if (selectedVideos.length === 0) {
+                addLog("Select at least one video to launch.", "error");
+                return;
+            }
+
+            const generating = selectedVideos.some(v => v.captionStatus === 'loading');
+            if (generating) {
+                addLog("Some captions are still generating. Launch will continue with available/fallback captions.", "info");
+            }
+
+            document.getElementById('warningOverlay').style.display = 'flex';
+            let count = 6;
+            document.getElementById('countdown').innerText = count;
+            
+            if (warningTimer) clearInterval(warningTimer);
+            warningTimer = setInterval(() => {
+                count--;
+                document.getElementById('countdown').innerText = count;
+                if (count <= 0) {
+                    clearInterval(warningTimer);
+                    document.getElementById('warningOverlay').style.display = 'none';
+                    launchBatch();
+                }
+            }, 1000);
+        }
+
+        function bypassWarning() {
+            if (warningTimer) clearInterval(warningTimer);
+            document.getElementById('warningOverlay').style.display = 'none';
+            launchBatch();
+        }
+
+        function cancelWarning() {
+            if (warningTimer) clearInterval(warningTimer);
+            document.getElementById('warningOverlay').style.display = 'none';
+        }
+
+        async function generateCaption() {
+            const btn = document.getElementById('aiBtn');
+            const originalText = btn.innerText;
+            btn.innerText = "⏳ Generating...";
+            btn.disabled = true;
+
+            try {
+                const customCaption = getCustomCaptionForCurrentUser();
+                if (customCaption) {
+                    document.getElementById('caption').value = customCaption;
+                    if (activeVideoIndex !== null) saveToCurrent();
+                    addLog("HIKARI caption generated successfully.", "success");
+                    return;
+                }
+
+                const res = await fetch(`${API_URL}/generate-caption`);
+                const data = await res.json();
+                document.getElementById('caption').value = data.caption;
+                if (activeVideoIndex !== null) saveToCurrent();
+                addLog("AI Caption generated successfully.", "success");
+            } catch (err) {
+                addLog("AI Gen error: " + err.message, "error");
+            } finally {
+                btn.innerText = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        async function launchBatch() {
+            if (isAdminUser()) {
+                addLog("Admin account is monitoring-only and cannot launch uploads.", "error");
+                return;
+            }
+            if (activeVideoIndex !== null) saveToCurrent();
+            const selectedAccount = getSelectedAccount();
+            if (!selectedAccount) {
+                addLog("Select an account first.", "error");
+                return;
+            }
+
+            videoQueue = ensureQueueFor(currentUser, selectedAccount);
+
+            const selectedVideos = videoQueue.filter(v => v.selected !== false);
+            if (selectedVideos.length === 0) {
+                addLog("Select at least one video before launching.", "error");
+                return;
+            }
+
+            const invalidPathCount = selectedVideos.filter(v => !isAbsolutePath(normalizeVideoPath(v.video))).length;
+            if (invalidPathCount > 0) {
+                addLog(`Cannot launch: ${invalidPathCount} selected video(s) do not have full file path. Re-add with + Add picker.`, "error");
+                return;
+            }
+
+            const strategy = document.getElementById('audioStrategy').value;
+            const headlessToggle = document.getElementById('headless').checked;
+            let g_sound = "random";
+            if (strategy === "none") g_sound = "none";
+            if (strategy === "search") g_sound = document.getElementById('soundName').value || "Viral Sound";
+            const globalHashtags = document.getElementById('hashtags').value.split(',').map(t => t.trim()).filter(t => t);
+            const globalCaption = (document.getElementById('caption').value || "").trim();
+            const globalSchedule = document.getElementById('scheduleEnabled').checked ? document.getElementById('schedule').value : null;
+            const globalDay = document.getElementById('scheduleEnabled').checked ? parseInt(document.getElementById('day').value) : null;
+
+            const config = {
+                videos: selectedVideos.map(v => {
+                    const videoPath = normalizeVideoPath(v.video);
+                    const fileName = videoPath.split('\\').pop().split('/').pop();
+                    const safeConfig = v.config || {};
+                    const isSched = safeConfig.scheduleEnabled !== false;
+                    const finalCaption = (safeConfig.desc || "").trim() || globalCaption || fileName || "Uploaded video";
+                    return {
+                        video: videoPath,
+                        desc: finalCaption,
+                        hashtags: Array.isArray(safeConfig.hashtags) && safeConfig.hashtags.length ? safeConfig.hashtags : globalHashtags,
+                        schedule: isSched ? (safeConfig.schedule || globalSchedule) : null,
+                        day: isSched ? (safeConfig.day || globalDay) : null,
+                        sound_name: safeConfig.sound_name || g_sound,
+                        sound_aud_vol: safeConfig.sound_aud_vol || document.getElementById('soundVol').value
+                    };
+                }),
+                accountname: document.getElementById('accountName').value,
+                operator: currentUser || "",
+                headless: document.getElementById('headless').checked,
+                stealth: document.getElementById('stealth').checked,
+                search_mode: (strategy === 'search') ? 'search' : 'favorites',
+                // Global defaults
+                hashtags: globalHashtags,
+                schedule: globalSchedule,
+                day: globalDay,
+                sound_name: g_sound,
+                sound_aud_vol: document.getElementById('soundVol').value
+            };
+
+            addLog(
+                headlessToggle
+                    ? "Display mode: Auto-grid visual windows (headless toggle ON)."
+                    : "Display mode: Normal headed windows (headless toggle OFF).",
+                "info"
+            );
+
+            addLog(`Launching ${selectedVideos.length} selected video(s) for @${selectedAccount}...`, "info");
+            
+            try {
+                const res = await fetch(`${API_URL}/start-upload`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    const detail = data?.detail;
+                    if (typeof detail === "string") {
+                        throw new Error(detail);
+                    }
+                    if (detail?.message) {
+                        throw new Error(detail.message);
+                    }
+                    throw new Error(`Backend rejected request (${res.status}).`);
+                }
+                addLog("Backend acknowledged. Monitor logs for progress.", "success");
+            } catch (err) {
+                addLog("Error connecting to backend: " + err.message, "error");
+            }
+        }
+
+        async function stopUploads() {
+            if (!confirm("Are you sure you want to stop all active uploads?")) return;
+            try {
+                await fetch(`${API_URL}/stop-upload`, { method: 'POST' });
+                addLog("Stop signal sent to engine.", "info");
+            } catch (err) {
+                addLog("Error stopping: " + err.message, "error");
+            }
+        }
+
+        function addLog(msg, type = "") {
+            const panel = document.getElementById('logPanel');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type || 'info'}`;
+            entry.innerText = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            panel.appendChild(entry);
+            panel.scrollTop = panel.scrollHeight;
+        }
+
+        let knownLogCount = 0;
+        const sessionHistory = {}; // file name -> {status, percent, message}
+
+        function getStatusColor(status) {
+            if (status === 'SUCCESS') return 'var(--accent-teal)';
+            if (status === 'FAILED' || status === 'STOPPED') return '#ef4444';
+            if (status === 'RUNNING') return '#5ea3ff';
+            return 'var(--text-secondary)';
+        }
+
+        function renderLiveProgress(progress, isUploading) {
+            const container = document.getElementById('liveProgress');
+            if (!container) return;
+
+            if (!progress || !progress.total) {
+                container.innerHTML = `
+                    <div class="live-progress-head">
+                        <span>Current Session</span>
+                        <span>0%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 0%;"></div>
+                    </div>
+                    <div class="live-progress-meta">Waiting for launch.</div>
+                `;
+                return;
+            }
+
+            const percent = Math.max(0, Math.min(100, Math.round(progress.percent || 0)));
+            const phaseLabel = isUploading ? 'Uploading live now' : `Session ${progress.status || 'idle'}`;
+
+            container.innerHTML = `
+                <div class="live-progress-head">
+                    <span>${phaseLabel}</span>
+                    <span>${percent}%</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: ${percent}%;"></div>
+                </div>
+                <div class="live-progress-meta">
+                    User: ${progress.operator || 'N/A'}<br>
+                    Account: @${progress.accountname || 'N/A'}<br>
+                    Completed: ${progress.completed || 0}/${progress.total || 0} • Active: ${progress.active || 0} • Pending: ${progress.pending || 0}<br>
+                    Success: ${progress.success || 0} • Failed: ${progress.failed || 0}
+                </div>
+            `;
+        }
+
+        function addToHistory(fullPath, status, percent = 0, message = "Queued in workspace") {
+            const fileName = fullPath.split('\\').pop().split('/').pop();
+            sessionHistory[fileName] = { status, percent, message };
+            renderHistory();
+        }
+
+        function updateHistoryStatus(fileName, status, percent = null, message = null) {
+            const current = sessionHistory[fileName] || { status: 'QUEUED', percent: 0, message: '' };
+            sessionHistory[fileName] = {
+                status,
+                percent: percent === null ? current.percent : percent,
+                message: message === null ? current.message : message
+            };
+            renderHistory();
+        }
+
+        function syncHistoryWithProgress(progress) {
+            if (!progress || !progress.items) return;
+
+            progress.items.forEach(item => {
+                sessionHistory[item.name] = {
+                    status: item.status,
+                    percent: item.percent || 0,
+                    message: item.message || ''
+                };
+            });
+        }
+
+        function renderHistory(progress = null) {
+            const container = document.getElementById('sessionHistory');
+            const entries = Object.entries(sessionHistory);
+            
+            if (entries.length === 0 && (!progress || !progress.total)) {
+                container.innerHTML = '<div class="history-empty">No session history yet.</div>';
+                return;
+            }
+
+            const itemsHtml = entries.map(([name, details]) => {
+                const color = getStatusColor(details.status);
+                const percent = Math.max(0, Math.min(100, Math.round(details.percent || 0)));
+                return `
+                    <div class="history-item">
+                        <div class="history-item-head">
+                            <div class="history-item-name">${name}</div>
+                            <div class="history-item-status" style="color: ${color};">${details.status} • ${percent}%</div>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${percent}%;"></div>
+                        </div>
+                        <div class="history-item-meta">${details.message || 'Waiting for update'}</div>
+                    </div>
+                `;
+            }).join('');
+
+            container.innerHTML = itemsHtml;
+        }
+
+        async function pollLogs() {
+            try {
+                const operator = encodeURIComponent(isAdminUser() ? "Admin" : (currentUser || "").trim());
+                const res = await fetch(`${API_URL}/logs?operator=${operator}`);
+                const data = await res.json();
+                 
+                // Toggle Stop Button
+                const stopBtn = document.querySelector('.btn-stop');
+                if (data.is_uploading) {
+                    stopBtn.classList.add('active');
+                } else {
+                    stopBtn.classList.remove('active');
+                }
+
+                renderLiveProgress(data.progress, data.is_uploading);
+                syncHistoryWithProgress(data.progress);
+                renderHistory(data.progress);
+                if (isAdminUser()) {
+                    pollAdminOverview();
+                }
+
+                const panel = document.getElementById('logPanel');
+                if (data.logs.length > knownLogCount) {
+                    panel.innerHTML = data.logs.map(log => {
+                        let type = "info";
+                        if (log.includes("SUCCESS")) type = "success";
+                        if (log.includes("FAILED") || log.includes("FATAL")) type = "error";
+                        return `<div class="log-entry ${type}">${log}</div>`;
+                    }).join('');
+                    panel.scrollTop = panel.scrollHeight;
+                    knownLogCount = data.logs.length;
+                }
+            } catch (err) {}
+        }
+
+        function initClientVideoPicker() {
+            const picker = document.getElementById('videoFilePicker');
+            if (!picker) return;
+
+            picker.addEventListener('change', async (event) => {
+                const files = Array.from(event.target.files || []);
+                if (!files.length) return;
+
+                addLog(`Importing ${files.length} video(s) from this PC...`, "info");
+                try {
+                    const uploadedPaths = await resolveDroppedFiles(files);
+                    if (uploadedPaths.length > 0) {
+                        addVideosFromPaths(uploadedPaths, "Local import");
+                    } else {
+                        addLog("No uploaded videos were returned by the server.", "error");
+                    }
+                } catch (error) {
+                    addLog(`Import failed: ${error.message}`, "error");
+                } finally {
+                    picker.value = '';
+                }
+            });
+        }
+
+        function initHoverSpotlights() {
+            document.addEventListener('pointermove', (event) => {
+                const element = event.target instanceof Element ? event.target : null;
+                if (!element) return;
+                const target = element.closest('.panel, .card, .btn, .queue-item, .account-pill, .user-card, .panel-footer');
+                if (!target) return;
+                const rect = target.getBoundingClientRect();
+                if (!rect.width || !rect.height) return;
+                const x = ((event.clientX - rect.left) / rect.width) * 100;
+                const y = ((event.clientY - rect.top) / rect.height) * 100;
+                target.style.setProperty('--mx', `${Math.max(0, Math.min(100, x))}%`);
+                target.style.setProperty('--my', `${Math.max(0, Math.min(100, y))}%`);
+            });
+        }
+
+        function initBrandMotion() {
+            const title = document.getElementById('brandTitle');
+            const subtitle = document.getElementById('brandSubtitle');
+            if (!title || !subtitle) return;
+
+            window.addEventListener('mousemove', (event) => {
+                const x = (event.clientX / window.innerWidth - 0.5) * 14;
+                const y = (event.clientY / window.innerHeight - 0.5) * 10;
+                title.style.transform = `translate3d(${x * 0.16}px, ${y * 0.12}px, 0)`;
+                subtitle.style.transform = `translate3d(${x * 0.1}px, ${y * 0.09}px, 0)`;
+            });
+        }
+
+        function initThreeBackground() {
+            if (!window.THREE) return;
+
+            const canvas = document.getElementById('fxBackground');
+            if (!canvas) return;
+
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(54, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.z = 19;
+
+            const renderer = new THREE.WebGLRenderer({
+                canvas,
+                alpha: true,
+                antialias: true,
+                powerPreference: 'high-performance'
+            });
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.8));
+            renderer.setSize(window.innerWidth, window.innerHeight);
+
+            const starGeometry = new THREE.BufferGeometry();
+            const starCount = 900;
+            const positions = new Float32Array(starCount * 3);
+            for (let i = 0; i < starCount; i++) {
+                const idx = i * 3;
+                positions[idx] = (Math.random() - 0.5) * 46;
+                positions[idx + 1] = (Math.random() - 0.5) * 36;
+                positions[idx + 2] = (Math.random() - 0.5) * 30;
+            }
+            starGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+            const stars = new THREE.Points(
+                starGeometry,
+                new THREE.PointsMaterial({
+                    size: 0.06,
+                    color: 0x7ad8ff,
+                    transparent: true,
+                    opacity: 0.55
+                })
+            );
+            scene.add(stars);
+
+            const orbitRing = new THREE.Mesh(
+                new THREE.TorusGeometry(6.4, 0.08, 16, 180),
+                new THREE.MeshBasicMaterial({ color: 0x00f5d4, transparent: true, opacity: 0.2, wireframe: true })
+            );
+            orbitRing.rotation.x = Math.PI * 0.2;
+            scene.add(orbitRing);
+
+            const aura = new THREE.Mesh(
+                new THREE.IcosahedronGeometry(4.4, 1),
+                new THREE.MeshBasicMaterial({ color: 0x9b5de5, transparent: true, opacity: 0.1, wireframe: true })
+            );
+            scene.add(aura);
+
+            let mouseX = 0;
+            let mouseY = 0;
+            let raf = 0;
+
+            function onPointerMove(event) {
+                mouseX = (event.clientX / window.innerWidth) - 0.5;
+                mouseY = (event.clientY / window.innerHeight) - 0.5;
+            }
+
+            function onResize() {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+
+            function tick() {
+                raf = requestAnimationFrame(tick);
+                stars.rotation.y += 0.0007;
+                stars.rotation.x += 0.00015;
+                orbitRing.rotation.z += 0.0012;
+                orbitRing.rotation.y += 0.0005;
+                aura.rotation.x += 0.00035;
+                aura.rotation.y -= 0.00025;
+
+                camera.position.x += ((mouseX * 1.7) - camera.position.x) * 0.035;
+                camera.position.y += ((-mouseY * 1.1) - camera.position.y) * 0.035;
+                camera.lookAt(0, 0, 0);
+
+                renderer.render(scene, camera);
+            }
+
+            window.addEventListener('mousemove', onPointerMove);
+            window.addEventListener('resize', onResize);
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) {
+                    cancelAnimationFrame(raf);
+                } else {
+                    tick();
+                }
+            });
+
+            tick();
+        }
+
+        renderQueue();
+        updateCurrentUserChip();
+        updateAdminControls();
+        updateAdminModeUi();
+        syncScheduleUiFromFields();
+        updateSchedulePreview();
+        renderHistory();
+        initThreeBackground();
+        initHoverSpotlights();
+        initBrandMotion();
+        initClientVideoPicker();
+        initGlobalDropGuard();
+        initQueueDragAndDrop();
+        setInterval(pollLogs, 1000);
+        
+        window.onload = async () => {
+            resetSessionTracking();
+            await loadNodeConfig();
+            await loadAccountsDatabase();
+            showUserSelection();
+        };
+    </script>
+</body>
+</html>

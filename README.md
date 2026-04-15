@@ -1,0 +1,181 @@
+<div align="center">
+  <h1>tiktokautouploader</h1>
+</div>
+
+### AUTOMATE TIKTOK UPLOADS. USE TRENDING/FAVORITED SOUNDS, ADD WORKING HASHTAGS, SCHEDULE UPLOADS, AUTOSOLVES CAPTCHAS, AND MORE
+
+[![PyPI version](https://img.shields.io/pypi/v/tiktokautouploader.svg)](https://pypi.org/project/tiktokautouploader/) WORKING AS OF FEB 2026 (sound_aud_vol issues only, use default ```sound_aud_vol='mix'```)
+
+<p align="center">
+  <img src="READMEimage/READMEGIF.gif" alt="" width="900"/>
+</p>
+
+## Features
+
+- **Bypass/Auto Solve Captchas:** Captchas won't slow you down, they get solved automatically.
+- **Upload with TikTok Sounds:** Add popular TikTok sounds to your videos. Search by name or pull straight from your favorites.
+- **Schedule Uploads:** Queue videos for a specific time, up to 10 days out.
+- **Copyright Check:** Run a copyright check before uploading so you're not caught off guard later.
+- **Add Working Hashtags:** Hashtags that are clickable and actually show up as hashtags instead of text.
+- **Proxy Support:** Route your uploads through a proxy server of your choice.
+- **Multiple Accounts:** Handle as many TikTok accounts as you need without losing track of any of them.
+- **Telegram Integration:** Hook the uploader up to a Telegram bot. Check `/TelegramAutomation` for setup details.
+- **Phantomwright Stealth Engine:** Bot detection evasion baked in at the browser level — fingerprint spoofing, human-like interactions, and hardened browser flags out of the box.
+
+---
+
+## Bot Detection Evasion with Phantomwright
+
+This library uses [**Phantomwright**](https://pypi.org/project/phantomwright/) as its browser engine instead of plain Playwright. Phantomwright is a patched, drop-in Playwright replacement specifically designed to evade bot detection.
+
+---
+
+## Installation
+
+```bash
+pip install tiktokautouploader
+```
+
+> **Already installed?** Make sure you're on the latest version before running anything.
+
+---
+
+## Pre-requisites
+
+**Node.js** is required since parts of this package run JavaScript under the hood. Grab it from [nodejs.org](https://nodejs.org/) if you don't have it. The JS dependencies (`playwright`, `playwright-extra`, `puppeteer-extra-plugin-stealth`) install themselves the first time you run the function — just make sure `npm` is in your PATH.
+
+**Browser binaries** also need to be installed once (run after installing library):
+
+```bash
+phantomwright_driver install chromium
+```
+
+---
+
+## Quick-Start
+
+> It's worth reading `DOCUMENTATION.md` before diving in. The first time you use the function for an account you'll be asked to log in — this only happens once per account.
+
+NOTE: The first time you run the function, it may take a long while to run as JS libraries are built, this only occurs on first run
+
+### Upload with hashtags
+
+```python
+from tiktokautouploader import upload_tiktok
+
+upload_tiktok(
+    video='path/to/your/video.mp4',
+    description='Check out my latest TikTok video!',
+    accountname='mytiktokaccount',
+    hashtags=['#fun', '#viral']
+)
+```
+
+### Upload with a TikTok Sound
+
+```python
+# Search for a sound by name (default behaviour)
+upload_tiktok(video=video_path, description=description, accountname=accountname,
+              sound_name='trending_sound', sound_aud_vol='mix')
+
+# Pull a sound from your TikTok favorites instead
+upload_tiktok(video=video_path, description=description, accountname=accountname,
+              sound_name='saved_sound', sound_aud_vol='mix', search_mode='favorites')
+```
+
+`sound_aud_vol` controls the balance between your video's original audio and the TikTok sound: `'main'`, `'mix'`, or `'background'`. Check the docs for details.
+
+### Schedule an Upload
+
+```python
+upload_tiktok(video=video_path, description=description, accountname=accountname,
+              schedule='03:10', day=11)
+```
+
+### Set a Custom Cover Image
+
+TikTok's "Upload cover" tab accepts an image but silently discards it server-side — the video always ends up with a random auto-selected frame as the cover regardless of what you upload there. The only reliable approach is TikTok's native cover editor, which lets you pick any frame from the video.
+
+The strategy: bake your desired cover image as the **last frame** of the MP4 at encode time, then pass `cover_image=` to `upload_tiktok()`. After the video uploads, the function opens the cover editor and drags the frame slider to the last frame before posting.
+
+**Step 1 — append your cover image as the last segment of the video:**
+
+```bash
+# Encode the static image as a short clip
+ffmpeg -loop 1 -i cover.png -t 2.5 -vf "scale=1080:1920,setsar=1" \
+  -c:v libx264 -pix_fmt yuv420p cover_clip.mp4
+
+# Concatenate it onto the end of your main video (concat demuxer)
+printf "file 'main.mp4'\nfile 'cover_clip.mp4'" > concat.txt
+ffmpeg -f concat -safe 0 -i concat.txt -c copy final.mp4
+```
+
+**Step 2 — pass `cover_image=` when uploading:**
+
+```python
+upload_tiktok(
+    video='final.mp4',        # last frame = your cover image
+    description='My caption',
+    accountname='myaccount',
+    cover_image='cover.png',  # triggers frame slider selection
+)
+```
+
+`cover_image` defaults to `None` — fully backward compatible. If the cover editor can't be found or the drag fails for any reason, the upload proceeds normally without a custom cover.
+
+### Copyright Check Before Uploading
+
+```python
+upload_tiktok(video=video_path, description=description, accountname=accountname,
+              hashtags=hashtags, copyrightcheck=True)
+```
+
+> The upload will stop if your video fails the copyright check.
+
+### Run Headless with Stealth + Proxy
+
+```python
+upload_tiktok(
+    video=video_path,
+    description=description,
+    accountname=accountname,
+    headless=True,       # no browser window
+    stealth=True,        # additional human-like delays on top of baseline evasion
+    suppressprint=True,  # no console output
+    proxy={              # optional proxy config — see docs for format
+        'server': 'http://yourproxy:port',
+        'username': 'user',
+        'password': 'pass'
+    }
+)
+```
+
+---
+
+## Full Parameter Reference
+
+| Parameter | Type | Description |
+|---|---|---|
+| `video` | `str` | Path to the video file |
+| `description` | `str` | Caption for the video |
+| `accountname` | `str` | Which account to upload on |
+| `cover_image` | `str` *(opt)* | Path to a PNG/JPG to use as the cover. Must already be baked into the last frame of the video — see above. |
+| `hashtags` | `list` *(opt)* | List of hashtags to include |
+| `sound_name` | `str` *(opt)* | Name of the TikTok sound to use |
+| `sound_aud_vol` | `str` *(opt)* | Audio balance: `'main'`, `'mix'`, or `'background'` |
+| `schedule` | `str` *(opt)* | Upload time in `HH:MM` (your local time) |
+| `day` | `int` *(opt)* | Day to schedule the upload for |
+| `copyrightcheck` | `bool` *(opt)* | Run a copyright check before uploading |
+| `suppressprint` | `bool` *(opt)* | Silence all progress output from the function |
+| `headless` | `bool` *(opt)* | Run without a visible browser window |
+| `stealth` | `bool` *(opt)* | Add extra delays between operations on top of the always-on Phantomwright evasion |
+| `proxy` | `dict` *(opt)* | Proxy server config — see docs for the expected format |
+| `search_mode` | `str` *(opt)* | How to find the sound: `'search'` (default) or `'favorites'` |
+
+---
+
+## Dependencies
+
+`phantomwright`, `requests`, `Pillow`, `inference` — all installed automatically with the package.
+
+---
